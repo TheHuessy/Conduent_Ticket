@@ -1,0 +1,169 @@
+Parking Ticket Notes:
+
+====== 12-17-18 =======
+
+Three different kinds of data extracts:
+	Payment Extract
+	Ticket Extract
+		Difficult to read [into R] because there are more columns than there are column names
+			**NEED TO LOOK AT RAW DATA IN TEXT EDITOR AND SEE IF SOMETHING NEEDS TO BE ADDED OR NOT**
+	Penalty Extract
+	Updated/loaded daily
+
+
+One periodic larger ticket file
+	Not pipe deliniated
+		Looks like XML/HTML
+
+Each file contains the previous dates payment and ticket info
+
+
+Analysis ideas:
+	-Payment types by median/mean amount of ticket price
+		Are people paying in cash for smaller amounts vs larger amounts
+	-Error correction tickets by price/method, reason, etc.
+		Will need to connect this dataset to the ticket dataset in order to do this one
+	
+
+
+
+Payments dataset:
+	-Pay.Type
+		Possible values: 
+			"Payment"
+				Obviously it was just a standard payment
+			"Error Corr"
+				Assuming it's a correction of an error
+				There are not many entries per day
+					Both errors that charged too much and too little
+	-Pay.Ticket.Number
+		Unique identifier for each ticket
+			This is going to be our primary/foreign key for the resulting dataset
+	-Pay.Accnt.Desc
+		Account Description
+			Describes what kind of payment portal was used to pay the ticket
+	-Pay.Method
+		The actual means with which the ticket was paid
+			Credit card, cash, etc.
+	-Pay.Proc.Date
+		The date on which the payment was processed
+	-Pay.Proc.Time
+		The time of day that the payment was processed
+	-Pay.Deposit.Date
+		The date on which the payment was deposited
+	-Pay.Batch.Num
+		?? Assuming a batch is a group of tickets that a person needs to pay off
+			Maybe they were behind and needed to pay off 2 tickets, this could be one batch
+				Or they just paid off one ticket and that's a batch
+		?? Could also be just what the clerk did, as in the payment clerk's workload at that point...
+	-Pay.Clerk
+		The identifier for the person or machine processing the payment
+	-Payment.Amt
+		The amount paid for the ticket
+
+Ticket dataset:
+	-Ticket Number
+		The ticket number/unique identifier for each ticket
+	-Ticket Issue Date
+		The date on which the ticket was issued
+	-Ticket Proc Date
+		The date on which the ticket was processed
+	-Batch Date
+		The date on which the batch was run
+			Still not 100% what batch means
+	-Batch Number
+		The number of the batch
+	-Badge # (Issuing Officer)
+		The badge number of the issuing officer
+	-Issuing Officer Division
+		The division from which the officer came
+	-Route
+		The route that that officer was on
+	-Street Number
+		The street number on which the ticket was issued
+	-Issuing Officer Name
+		The name of the issuing officer
+			I feel this column shouldn't be in the physical location it's in
+	-Street Name
+		The street on which the violation occured
+	-Street Direction
+		Not a lot of data here, but one would assume what side of the street the violating vehicle was on
+	-Street Suffix
+		The suffix of the street on which the violation took place
+	-Amount Due
+		The amount of the ticket
+	-Rp Name
+		The name of the alleged violator or viloating body
+	-Make
+		Make of the offending vehicle
+	-Rp Plate State
+		The plate number
+			Why this says state, I'll never know
+	-Rp Plate
+		The state from which the vehicle came
+	-Rp Plate Type
+		The type of plate, only enumerated if it isn't a standard passenger vehicle
+	-Plate Color
+		There is just a single value "R", assuming this means something like "regular"
+			Perhaps a municipal plate wouldn't be an "R" because it's a special kind of plate and would then maybe have a different color
+	-Vehicle Color
+		Coded value for the color of the offending vehicle
+	-Vehicle Color Desc
+		The written out name of the color of the offending vehicle
+	-Violation Code
+		Specific violation code
+	-Violation Type
+		The coded type of violation
+	-Vilation Type Desc
+		Brief description of what type of ticket was issued
+	-Violation Class Id
+		Another coded descriptive value for the class of violation
+	-Violation Class Desc
+		The written class of violation
+	-Violation Desc
+		Quick description of the ticket
+	-Ticket Issue Time
+		The time of day at which the ticket was issued
+
+Penalty Dataset:
+	-Ticket.Number
+		The ticket number associated with the violation
+	-Ticket.Ussue.Date
+		The date on which the ticket was issued
+	-Ticket.Proc.Date
+		The date on which the ticket was processed
+	-Amount.Due
+		The amount that the ticket was for
+	-Total.Fine.Amount
+		The final amount of the fine, including all late fees
+	-Interest.Due
+		The amount of interest levied on the initial violation
+	-Fine.Amount
+		The initial amount that the ticket was for
+	-Penalty.1
+		The amount of the first penatly fee
+	-Penalty.2
+		The amount of the second penalty fee
+	-Penalty.3
+		The amount of the third penalty fee
+	-Penalty.4
+		The amount of the fourth penalty fee
+	-Penalty.5
+		The amount of the fifth penalty fee
+	-Reduction.Amount
+		The amount of any reduction that may have occured
+	-Total.Paid
+		The total amount paid on a given ticket
+	-Unapplied.Amount
+		?? An amount that was initially applied then removed?
+	-Penalty.Date.1st.Occurrence
+		The date of the first penalty
+	-Penalty.Date.2nd.Occurrence
+		The date of the second penalty
+	-Penalty.Date.3rd.Occurrence
+		The date of the third penalty
+
+
+
+
+
