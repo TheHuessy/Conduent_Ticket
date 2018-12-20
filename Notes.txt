@@ -1,5 +1,20 @@
 Parking Ticket Notes:
 
+====== 12-20-18 =======
+-Looking at ticketissedate is misleading.
+	There are some tickets that are "issued" in the future
+		Ex. ticket number 488095090 was/is issued on 11/12/2019
+		Ex. ticket number 487894853 was/is issued on 09/04/2019
+	Should look at ticketprocdate as it seems to be the date that the machine recorded the ticket i.e the date the ticket was printed...
+		Seems rather silly
+-Geocoding
+	Once we get a stable geocoder figured out, we should geocode via street name and number combination
+		Will need some cleaning as some street names have 'x[number]' beginnings
+-The data seem to be sent over by XEROX at 4:01PM each business day
+	We should automate the data conversion script at around 5PM each day to catch new data
+
+
+
 ====== 12-17-18 =======
 
 Three different kinds of data extracts:
