@@ -2,6 +2,7 @@ library(readr)
 library(dplyr)
 library(civis)
 library(lubridate)
+library(ggplot2)
 #Good until Christmas +2 VV
 Sys.setenv(CIVIS_API_KEY = 'e55b1cc634361b4a71cdd072d0dec1bfb8df0522aba379d7d2a422f124abf8ba')
 
@@ -120,12 +121,89 @@ for (i in car){
   df.car.amt <- rbind(df.car.amt, ad)
 }
 
-df.car.amt[order(df.car.amt$Av_Per_Tkt, decreasing = TRUE),]
+df.car.amt[which(df.car.amt$No_Tickets > 100),] %>% 
+  .[order(.$Av_Per_Tkt, decreasing = TRUE),]
 
 
+##### MOST PROFITABLE ROUTE #####
 
 
+rt <- unique(as.character(tics$route)) %>% 
+  .[which(. != "")]
 
+df.rt.amt <- data.frame("Route" = as.character(),
+                        "No_Tickets" = as.numeric(),
+                        "Av_Per_Tkt" = as.numeric()
+)
+for (i in rt){
+  d <- nrow(tics[which(as.character(tics$route) == i),])
+  am <- sum(na.omit(tics$amountdue[which(as.character(tics$route) == i)]))
+  ad <- data.frame("Route" = i,
+                   "No_Tickets" = d,
+                   "Av_Per_Tkt" = round(am/d, digits = 2)
+  )
+  df.rt.amt <- rbind(df.rt.amt, ad)
+}
+
+df.rt.amt[order(df.rt.amt$No_Tickets, decreasing = TRUE),]
+
+##### TICKET VOLUME BY TIME OF DAY #####
+
+na.omit(unique(as.numeric(as.character(tics$ticketissuetime))))
+tics$ISSUE_HOUR <- as.numeric(as.character(tics$ticketissuetime))
+tics$ISSUE_HOUR[which(tics$ISSUE_HOUR < 100)] <- 0
+tics$ISSUE_HOUR[which(tics$ISSUE_HOUR >= 100 & tics$ISSUE_HOUR < 200)] <- 1
+tics$ISSUE_HOUR[which(tics$ISSUE_HOUR >= 200 & tics$ISSUE_HOUR < 300)] <- 2
+tics$ISSUE_HOUR[which(tics$ISSUE_HOUR >= 300 & tics$ISSUE_HOUR < 400)] <- 3
+tics$ISSUE_HOUR[which(tics$ISSUE_HOUR >= 400 & tics$ISSUE_HOUR < 500)] <- 4
+tics$ISSUE_HOUR[which(tics$ISSUE_HOUR >= 500 & tics$ISSUE_HOUR < 600)] <- 5
+tics$ISSUE_HOUR[which(tics$ISSUE_HOUR >= 600 & tics$ISSUE_HOUR < 700)] <- 6
+tics$ISSUE_HOUR[which(tics$ISSUE_HOUR >= 700 & tics$ISSUE_HOUR < 800)] <- 7
+tics$ISSUE_HOUR[which(tics$ISSUE_HOUR >= 800 & tics$ISSUE_HOUR < 900)] <- 8
+tics$ISSUE_HOUR[which(tics$ISSUE_HOUR >= 900 & tics$ISSUE_HOUR < 1000)] <- 9
+tics$ISSUE_HOUR[which(tics$ISSUE_HOUR >= 1000 & tics$ISSUE_HOUR < 1100)] <- 10
+tics$ISSUE_HOUR[which(tics$ISSUE_HOUR >= 1100 & tics$ISSUE_HOUR < 1200)] <- 11
+tics$ISSUE_HOUR[which(tics$ISSUE_HOUR >= 1200 & tics$ISSUE_HOUR < 1300)] <- 12
+tics$ISSUE_HOUR[which(tics$ISSUE_HOUR >= 1300 & tics$ISSUE_HOUR < 1400)] <- 13
+tics$ISSUE_HOUR[which(tics$ISSUE_HOUR >= 1400 & tics$ISSUE_HOUR < 1500)] <- 14
+tics$ISSUE_HOUR[which(tics$ISSUE_HOUR >= 1500 & tics$ISSUE_HOUR < 1600)] <- 15
+tics$ISSUE_HOUR[which(tics$ISSUE_HOUR >= 1600 & tics$ISSUE_HOUR < 1700)] <- 16
+tics$ISSUE_HOUR[which(tics$ISSUE_HOUR >= 1700 & tics$ISSUE_HOUR < 1800)] <- 17
+tics$ISSUE_HOUR[which(tics$ISSUE_HOUR >= 1800 & tics$ISSUE_HOUR < 1900)] <- 18
+tics$ISSUE_HOUR[which(tics$ISSUE_HOUR >= 1900 & tics$ISSUE_HOUR < 2000)] <- 19
+tics$ISSUE_HOUR[which(tics$ISSUE_HOUR >= 2000 & tics$ISSUE_HOUR < 2100)] <- 20
+tics$ISSUE_HOUR[which(tics$ISSUE_HOUR >= 2100 & tics$ISSUE_HOUR < 2200)] <- 21
+tics$ISSUE_HOUR[which(tics$ISSUE_HOUR >= 2200 & tics$ISSUE_HOUR < 2300)] <- 22
+tics$ISSUE_HOUR[which(tics$ISSUE_HOUR >= 2300 & tics$ISSUE_HOUR < 2400)] <- 23
+
+
+hr <- unique((tics$ISSUE_HOUR)) %>% 
+  .[which(. != "")]
+
+df.hr.amt <- data.frame("Hour" = as.character(),
+                        "No_Tickets" = as.numeric(),
+                        "Av_Per_Tkt" = as.numeric()
+)
+for (i in hr){
+  d <- nrow(tics[which(as.character(tics$ISSUE_HOUR) == i),])
+  am <- sum(na.omit(tics$amountdue[which(as.character(tics$ISSUE_HOUR) == i)]))
+  ad <- data.frame("Hour" = i,
+                   "No_Tickets" = d,
+                   "Av_Per_Tkt" = round(am/d, digits = 2)
+  )
+  df.hr.amt <- rbind(df.hr.amt, ad)
+}
+
+df.hr.amt[order(df.hr.amt$Av_Per_Tkt, decreasing = TRUE),]
+df.hr.amt[order(df.hr.amt$No_Tickets, decreasing = TRUE),]
+hrdat <- df.hr.amt[order(df.hr.amt$Hour, decreasing = TRUE),]
+
+hr.g <- ggplot(data = hrdat, aes(x = hrdat$Hour))
+hr.g + 
+  geom_line(mapping = aes(y = hrdat$No_Tickets))
+
+hr.g +
+  geom_line(mapping = aes(y = hrdat$Av_Per_Tkt))
 
 
 #Finding my MF ticket...
