@@ -3,6 +3,7 @@ library(dplyr)
 library(XML)
 library(xml2)
 
+
 ##### Load most recent datasets #####
 system("cmd.exe", input ='python "H:/My Documents/Git Code Examples/Conduent_Ticket/piptocsv.py"')
 
@@ -120,10 +121,10 @@ for (i in 1:length(f)){
   print(paste("Finished with", i, "of", length(f)))
 }
 
-head(penq)
+#head(penq)
 
 #Good until Christmas VV
-Sys.setenv(CIVIS_API_KEY = 'e55b1cc634361b4a71cdd072d0dec1bfb8df0522aba379d7d2a422f124abf8ba')
+Sys.setenv(CIVIS_API_KEY = 'd2fa85f949d28d5ecd911f7f25a882156a05679e697bb9ef55b961f3525e8903')
 
 library(civis)
 

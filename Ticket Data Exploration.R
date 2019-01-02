@@ -4,7 +4,7 @@ library(civis)
 library(lubridate)
 library(ggplot2)
 #Good until Christmas +2 VV
-Sys.setenv(CIVIS_API_KEY = 'e55b1cc634361b4a71cdd072d0dec1bfb8df0522aba379d7d2a422f124abf8ba')
+#Sys.setenv(CIVIS_API_KEY = 'e55b1cc634361b4a71cdd072d0dec1bfb8df0522aba379d7d2a422f124abf8ba')
 
 ##### LOAD IN DATASETS FROM CIVIS #####
 tics <- read_civis('sandbox.conduent_tickets')
@@ -150,6 +150,7 @@ df.rt.amt[order(df.rt.amt$No_Tickets, decreasing = TRUE),]
 ##### TICKET VOLUME BY TIME OF DAY #####
 
 na.omit(unique(as.numeric(as.character(tics$ticketissuetime))))
+tics$ticketissuetime <- gsub(":", "", as.character(tics$ticketissuetime))
 tics$ISSUE_HOUR <- as.numeric(as.character(tics$ticketissuetime))
 tics$ISSUE_HOUR[which(tics$ISSUE_HOUR < 100)] <- 0
 tics$ISSUE_HOUR[which(tics$ISSUE_HOUR >= 100 & tics$ISSUE_HOUR < 200)] <- 1
@@ -206,9 +207,125 @@ hr.g +
   geom_line(mapping = aes(y = hrdat$Av_Per_Tkt))
 
 
-#Finding my MF ticket...
-#tics[which(as.character(tics$streetname) == "BALLARD"),]
+##### TICKET VOLUME BY DAY OF WEEK #####
 
+
+tics$DOW <- weekdays(as.Date(as.character(tics$ticketissuedate), format = "%m/%d/%Y"))
+
+
+dow <- unique((tics$DOW)) %>% 
+  .[which(is.na(.) == FALSE)]
+
+df.dow.amt <- data.frame("Weekday" = as.character(),
+                        "No_Tickets" = as.numeric(),
+                        "Av_Tic_Per_Day" = as.numeric(),
+                        "Av_Per_Tkt" = as.numeric()
+)
+for (i in dow){
+  d <- nrow(tics[which(as.character(tics$DOW) == i),])
+  am <- sum(na.omit(tics$amountdue[which(as.character(tics$DOW) == i)]))
+  apd <- round(nrow(tics[which(as.character(tics$DOW) == i),])/length(unique(tics$ticketissuedate[which(as.character(tics$DOW) == i)])), digits = 1)
+  ad <- data.frame("Hour" = i,
+                   "No_Tickets" = d,
+                   "Av_Tic_Per_Day" = apd,
+                   "Av_Per_Tkt" = round(am/d, digits = 2)
+  )
+  df.dow.amt <- rbind(df.dow.amt, ad)
+}
+
+df.dow.amt[order(df.dow.amt$Av_Tic_Per_Day, decreasing = TRUE),]
+
+##### TICKET VOLUME BY DAY OF WEEK BY TIME OF DAY #####
+
+
+hr <- unique((tics$ISSUE_HOUR)) %>% 
+  .[which(. != "")]
+
+df.dow.avmat <- data.frame("Hour" = as.character(),
+                           "Monday" = as.numeric(),
+                           "Tuesday" = as.numeric(),
+                           "Wednesday" = as.numeric(),
+                           "Thursday" = as.numeric(),
+                           "Friday" = as.numeric(),
+                           "Saturday" = as.numeric(),
+                           "Sunday" = as.numeric()
+)
+
+for (y in hr){
+    mond <- round(nrow(tics[which(as.character(tics$DOW) == "Monday" & as.character(tics$ISSUE_HOUR) == y),])/length(unique(tics$ticketissuedate[which(as.character(tics$DOW) == "Monday")])), digits = 1)
+    tued <- round(nrow(tics[which(as.character(tics$DOW) == "Tuesday" & as.character(tics$ISSUE_HOUR) == y),])/length(unique(tics$ticketissuedate[which(as.character(tics$DOW) == "Tuesday")])), digits = 1)
+    wedd <- round(nrow(tics[which(as.character(tics$DOW) == "Wednesday" & as.character(tics$ISSUE_HOUR) == y),])/length(unique(tics$ticketissuedate[which(as.character(tics$DOW) == "Wednesday")])), digits = 1)
+    thud <- round(nrow(tics[which(as.character(tics$DOW) == "Thursday" & as.character(tics$ISSUE_HOUR) == y),])/length(unique(tics$ticketissuedate[which(as.character(tics$DOW) == "Thursday")])), digits = 1)
+    frid <- round(nrow(tics[which(as.character(tics$DOW) == "Friday" & as.character(tics$ISSUE_HOUR) == y),])/length(unique(tics$ticketissuedate[which(as.character(tics$DOW) == "Friday")])), digits = 1)
+    satd <- round(nrow(tics[which(as.character(tics$DOW) == "Saturday" & as.character(tics$ISSUE_HOUR) == y),])/length(unique(tics$ticketissuedate[which(as.character(tics$DOW) == "Saturday")])), digits = 1)
+    sund <- round(nrow(tics[which(as.character(tics$DOW) == "Sunday" & as.character(tics$ISSUE_HOUR) == y),])/length(unique(tics$ticketissuedate[which(as.character(tics$DOW) == "Sunday")])), digits = 1)
+    
+    ad <- data.frame("Hour" = y,
+                     "Monday" = mond,
+                     "Tuesday" = tued,
+                     "Wednesday" = wedd,
+                     "Thursday" = thud,
+                     "Friday" = frid,
+                     "Saturday" = satd,
+                     "Sunday" = sund)
+    
+    df.dow.avmat <- rbind(df.dow.avmat, ad)
+    
+    print(paste("Finished with Hour", y, "of", length(hr)))
+    }
+  
+                   
+df.dow.avmat[order(df.dow.avmat$Hour, decreasing = FALSE),]  
+
+
+
+##### AVERAGE TICKET AMOUNT BY DAY OF WEEK BY TIME OF DAY #####
+
+
+hr <- unique((tics$ISSUE_HOUR)) %>% 
+  .[which(. != "")]
+
+df.dow.ptamt <- data.frame("Hour" = as.character(),
+                           "Monday" = as.numeric(),
+                           "Tuesday" = as.numeric(),
+                           "Wednesday" = as.numeric(),
+                           "Thursday" = as.numeric(),
+                           "Friday" = as.numeric(),
+                           "Saturday" = as.numeric(),
+                           "Sunday" = as.numeric()
+)
+
+for (y in hr){
+  mond <- round(sum(na.omit(tics$amountdue[which(as.character(tics$DOW) == "Monday" & as.character(tics$ISSUE_HOUR) == y)]))/length(unique(tics$ticketissuedate[which(as.character(tics$DOW) == "Monday")])), digits = 0)
+  tued <- round(sum(na.omit(tics$amountdue[which(as.character(tics$DOW) == "Tuesday" & as.character(tics$ISSUE_HOUR) == y)]))/length(unique(tics$ticketissuedate[which(as.character(tics$DOW) == "Tuesday")])), digits = 0)
+  wedd <- round(sum(na.omit(tics$amountdue[which(as.character(tics$DOW) == "Wednesday" & as.character(tics$ISSUE_HOUR) == y)]))/length(unique(tics$ticketissuedate[which(as.character(tics$DOW) == "Wednesday")])), digits = 0)
+  thud <- round(sum(na.omit(tics$amountdue[which(as.character(tics$DOW) == "Thursday" & as.character(tics$ISSUE_HOUR) == y)]))/length(unique(tics$ticketissuedate[which(as.character(tics$DOW) == "Thursday")])), digits = 0)
+  frid <- round(sum(na.omit(tics$amountdue[which(as.character(tics$DOW) == "Friday" & as.character(tics$ISSUE_HOUR) == y)]))/length(unique(tics$ticketissuedate[which(as.character(tics$DOW) == "Friday")])), digits = 0)
+  satd <- round(sum(na.omit(tics$amountdue[which(as.character(tics$DOW) == "Saturday" & as.character(tics$ISSUE_HOUR) == y)]))/length(unique(tics$ticketissuedate[which(as.character(tics$DOW) == "Saturday")])), digits = 0)
+  sund <- round(sum(na.omit(tics$amountdue[which(as.character(tics$DOW) == "Sunday" & as.character(tics$ISSUE_HOUR) == y)]))/length(unique(tics$ticketissuedate[which(as.character(tics$DOW) == "Sunday")])), digits = 0)
+  
+  ad <- data.frame("Hour" = y,
+                   "Monday" = mond,
+                   "Tuesday" = tued,
+                   "Wednesday" = wedd,
+                   "Thursday" = thud,
+                   "Friday" = frid,
+                   "Saturday" = satd,
+                   "Sunday" = sund)
+  
+  df.dow.ptamt <- rbind(df.dow.ptamt, ad)
+  
+  print(paste("Finished with Hour", which(hr == y), "of", length(hr)))
+}
+
+
+df.dow.ptamt[order(df.dow.ptamt$Hour, decreasing = FALSE),]  
+
+
+
+
+#tics[which(as.character(tics$streetname) == "BALLARD"),]
+#tics[which(as.character(tics$issuingofficername) == "NEE-- SHARON"),]
 
 
 

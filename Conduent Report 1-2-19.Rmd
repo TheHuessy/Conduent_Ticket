@@ -1,0 +1,431 @@
+---
+title: "Conduent Data Exploration"
+author: "James Huessy"
+date: "1/2/2019"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+library(readr)
+library(dplyr)
+library(civis)
+library(lubridate)
+library(ggplot2)
+knitr::opts_chunk$set(echo = TRUE)
+Sys.setenv(CIVIS_API_KEY = 'd2fa85f949d28d5ecd911f7f25a882156a05679e697bb9ef55b961f3525e8903')
+```
+
+
+```{r, include=FALSE}
+
+
+##### LOAD IN DATASETS FROM CIVIS #####
+tics <- read_civis('sandbox.conduent_tickets')
+pays <- read_civis('sandbox.conduent_payments')
+pens <- read_civis('sandbox.conduent_penalties')
+```
+
+
+
+```{r, include=FALSE}
+
+##### EXPLORE TICKETS #####
+
+head(tics)
+
+#This field shows that tickets are "issued" on random days, some of which have yet to happen
+sort(unique(as.Date(as.character(tics$ticketissuedate), format = "%m/%d/%Y")))
+
+#Processing date seems to be a better match as it shows the date that the ticket was printed
+sort(unique(as.Date(as.character(tics$ticketprocdate), format = "%m/%d/%Y")))
+tics[which(as.Date(as.character(tics$ticketprocdate), format = "%m/%d/%Y") == "2018-11-18"),]
+
+#example of misleading ticket from 2019 (it was 12/2018 when this was run...)
+tics[which(year(as.Date(as.character(tics$ticketissuedate), format = "%m/%d/%Y")) == "2019"),]
+```
+
+### ISSUING AUTHORITY
+
+Though Traffic and Parking are not the only ticket issuing authorities in our data, they write the most tickets than any other issuing authority. The Boston Police also write a small proportion of parking tickets, but the Parking Department is a the largest ticket writer in Boston.
+
+
+```{r, echo=FALSE}
+
+##### ISSUING AUTHORITY #####
+
+#get list of issuing authorities
+ia <- unique(as.character(tics$agencynameissuingagency)) %>% 
+  .[which(. != "")]
+
+df.ia.freq <- data.frame("Issuing_Authority" = as.character(),
+                         "No_Tickets" = as.numeric()
+                         )
+for (i in ia){
+  d <- nrow(tics[which(as.character(tics$agencynameissuingagency) == i),])
+  ad <- data.frame("Issuing_Authority" = i,
+                   "No_Tickets" = d
+                   )
+  df.ia.freq <- rbind(df.ia.freq, ad)
+}
+
+kable(df.ia.freq, row.names = FALSE)
+
+```
+
+### DIFFERENT TYPES OF TICKETS
+
+For the most part, parking tickets are written for vehicles that park at an expired parking meter. The next common reason to write a ticket is that the vehicle is parked illegally in a residentally permitted area. Though not as common, but certainly worth mentioning are expired inspection, street cleaning, no parking signs, loading zones, and parking for too long in a spot with a time limit.
+
+Seemingly problematic issues such as double parking do not seem to be high on the ticketing list. This doesn't mean that it doesn't happen, but it does show that the Parking Department isn't ticketing double parking as much as it is simple parking time expired or parking in the wrong kind of spot.
+
+
+
+```{r, echo=FALSE}
+
+##### DIFFERENT TYPES OF TICETS #####
+tty <- unique(as.character(tics$violationdesc)) %>% 
+  .[which(. != "")]
+
+df.tty.freq <- data.frame("Ticket_Type" = as.character(),
+                         "No_Tickets" = as.numeric()
+)
+for (i in tty){
+  d <- nrow(tics[which(as.character(tics$violationdesc) == i),])
+  ad <- data.frame("Ticket_Type" = i,
+                   "No_Tickets" = d
+  )
+  df.tty.freq <- rbind(df.tty.freq, ad)
+}
+
+kable(df.tty.freq[order(df.tty.freq$No_Tickets, decreasing = TRUE),], row.names = FALSE)
+
+```
+
+### LOOKING AT STATE DESCRIMINATION
+
+We look at tickets issued by plate origin. The data show that the most ticketed plate origin is Massachusetts, which does not come as a surprise as one would expect the most common plate to come from the state in which they are being ticketed. The next four highest origins cover New York and all New England states except Vermont and Maine. Again, one would assume that vehicles from neighboring states would be ticketed fairly often as these states aren't all that far from Boston. If we want to determine if there is any kind of discrimination based on plate origin, we will need to know the proportion of drivers coming into Boston from each neighboring state, data which will be impossible to get.
+
+What is interesting is that Vermont, a bordering state to Massachusetts, has far fewer parking tickets issued. The state ranks 14th of all states ticketed, below even Maine which ranks 8th. This could mean that there are fewer people from Vermont coming to Boston (possibly out of fear or a deep seeded, parochial-centric culture) and parking illegally. This theory is questionable as Maine, which has about 20 miles of New Hampshire separating it from Massachusetts, attracts more tickets than vehicle counterparts from Vermont. This would then suggest, since Maine undoes the ease of entry  theory, that drivers from Vermont are just better at being able to read and comprehend the various traffic signs in Boston than drivers from other New England states.
+
+
+
+```{r, echo=FALSE}
+
+##### LOOKING AT STATE DESCRIMINATION #####
+plt <- unique(as.character(tics$rpplate)) %>% 
+  .[which(. != "")]
+
+df.plt.freq <- data.frame("Origin_State" = as.character(),
+                          "No_Tickets" = as.numeric()
+)
+for (i in plt){
+  d <- nrow(tics[which(as.character(tics$rpplate) == i),])
+  ad <- data.frame("Origin_State" = i,
+                   "No_Tickets" = d
+  )
+  df.plt.freq <- rbind(df.plt.freq, ad)
+}
+
+kable(df.plt.freq[order(df.plt.freq$No_Tickets, decreasing = TRUE),], row.names = FALSE)
+```
+
+### CAR TYPES
+
+Car make may affect whether or not a ticket is written. According to the data, Toyotas are the highest ticketed car make, followed closely by Ford and Honda. This could be a reflection of the types of drivers that use these makes of car, or it could simply be a problem of auto market saturation as Toyota is a very reliable and popular brand of car. More data would be needed, specifically from the Registry of Motor Vehicles, to examine the proportion of registrations for each car make and calculate how representative each make is compared to the number of tickets issued.
+
+
+```{r, echo=FALSE}
+
+##### CAR TYPES #####
+
+car <- unique(as.character(tics$make)) %>% 
+  .[which(. != "")]
+
+df.car.freq <- data.frame("Car_Make" = as.character(),
+                          "No_Tickets" = as.numeric()
+)
+for (i in car){
+  d <- nrow(tics[which(as.character(tics$make) == i),])
+  ad <- data.frame("Car_Make" = i,
+                   "No_Tickets" = d
+  )
+  df.car.freq <- rbind(df.car.freq, ad)
+}
+
+kable(df.car.freq[order(df.car.freq$No_Tickets, decreasing = TRUE),], row.names = FALSE)
+
+```
+
+### CAR TYPES AND AMOUNT
+
+Looking at the amount of money a certain make of vehicle brings in on average, we see a less surprising landscape. Though the data isn’t entirely clean, we see that “UPS”, meaning the UPS trucks, bring in quite a bit per ticket, at about \$69 per ticket issued. Of the vehicles mentioned in the previous section, though Toyota has a higher number of tickets issued than Ford, each ticket is actually for a smaller amount than their American made counterparts. Toyota tickets average to be about \$52, whereas For tickets come in, on average, at $55.
+
+
+```{r, echo=FALSE}
+
+###### CAR TYPES AND AMOUNT #####
+
+car <- unique(as.character(tics$make)) %>% 
+  .[which(. != "")]
+
+df.car.amt <- data.frame("Car_Make" = as.character(),
+                         "No_Tickets" = as.numeric(),
+                         "Total_AMT" = as.numeric(),
+                         "Av_Per_Tkt" = as.numeric()
+                         )
+for (i in car){
+  d <- nrow(tics[which(as.character(tics$make) == i),])
+  am <- sum(na.omit(tics$amountdue[which(as.character(tics$make) == i)]))
+  ad <- data.frame("Car_Make" = i,
+                   "No_Tickets" = d,
+                   "Total_AMT" = am,
+                   "Av_Per_Tkt" = round(am/d, digits = 2)
+  )
+  df.car.amt <- rbind(df.car.amt, ad)
+}
+
+kable(df.car.amt[which(df.car.amt$No_Tickets > 100),] %>% 
+  .[order(.$Av_Per_Tkt, decreasing = TRUE),], row.names = FALSE)
+
+```
+
+### MOST PROFITABLE ROUTE
+
+These data need some clarification from the Parking Department, but it can be inferred that South Boston (route "SB") is likely the highest ticketed route. Close behind are routes "DOR", "EB", and "CHAS" (inferring Dorchester, East Boston, and Charlestown respectively). These areas have a relatively high residential density and so it is not surprising that more tickets are issued there, since we have already established that the non-resident parking tickets are among the top 2 ticketing reasons. 
+
+More data is needed to really look at hotspots for both number of tickets written as well as average amount per ticket.
+
+```{r, echo=FALSE}
+
+##### MOST PROFITABLE ROUTE #####
+
+
+rt <- unique(as.character(tics$route)) %>% 
+  .[which(. != "")]
+
+df.rt.amt <- data.frame("Route" = as.character(),
+                        "No_Tickets" = as.numeric(),
+                        "Av_Per_Tkt" = as.numeric()
+)
+for (i in rt){
+  d <- nrow(tics[which(as.character(tics$route) == i),])
+  am <- sum(na.omit(tics$amountdue[which(as.character(tics$route) == i)]))
+  ad <- data.frame("Route" = i,
+                   "No_Tickets" = d,
+                   "Av_Per_Tkt" = round(am/d, digits = 2)
+  )
+  df.rt.amt <- rbind(df.rt.amt, ad)
+}
+
+kable(df.rt.amt[order(df.rt.amt$No_Tickets, decreasing = TRUE),], row.names = FALSE)
+```
+
+### TICKET VOLUME BY TIME OF DAY
+
+Hour by hour, we can see that Boston has peak periods of ticket issuance, as well as some times where ticket writing almost stops. The city issues the most tickets between the hours of noon and 1PM, then between 8AM and 11AM, with 11AM having slightly more than 10AM. The average ticket price, however is not highest during these peak hours, and the chances of getting a higher ticket are highest during the hours of midnight to 6AM, though the number of tickets issued during that time is lower than other hours.
+
+```{r, echo=FALSE, warning=FALSE}
+
+##### TICKET VOLUME BY TIME OF DAY #####
+
+#na.omit(unique(as.numeric(as.character(tics$ticketissuetime))))
+tics$ticketissuetime <- gsub(":", "", as.character(tics$ticketissuetime))
+tics$ISSUE_HOUR <- as.numeric(as.character(tics$ticketissuetime))
+tics$ISSUE_HOUR[which(tics$ISSUE_HOUR < 100)] <- 0
+tics$ISSUE_HOUR[which(tics$ISSUE_HOUR >= 100 & tics$ISSUE_HOUR < 200)] <- 1
+tics$ISSUE_HOUR[which(tics$ISSUE_HOUR >= 200 & tics$ISSUE_HOUR < 300)] <- 2
+tics$ISSUE_HOUR[which(tics$ISSUE_HOUR >= 300 & tics$ISSUE_HOUR < 400)] <- 3
+tics$ISSUE_HOUR[which(tics$ISSUE_HOUR >= 400 & tics$ISSUE_HOUR < 500)] <- 4
+tics$ISSUE_HOUR[which(tics$ISSUE_HOUR >= 500 & tics$ISSUE_HOUR < 600)] <- 5
+tics$ISSUE_HOUR[which(tics$ISSUE_HOUR >= 600 & tics$ISSUE_HOUR < 700)] <- 6
+tics$ISSUE_HOUR[which(tics$ISSUE_HOUR >= 700 & tics$ISSUE_HOUR < 800)] <- 7
+tics$ISSUE_HOUR[which(tics$ISSUE_HOUR >= 800 & tics$ISSUE_HOUR < 900)] <- 8
+tics$ISSUE_HOUR[which(tics$ISSUE_HOUR >= 900 & tics$ISSUE_HOUR < 1000)] <- 9
+tics$ISSUE_HOUR[which(tics$ISSUE_HOUR >= 1000 & tics$ISSUE_HOUR < 1100)] <- 10
+tics$ISSUE_HOUR[which(tics$ISSUE_HOUR >= 1100 & tics$ISSUE_HOUR < 1200)] <- 11
+tics$ISSUE_HOUR[which(tics$ISSUE_HOUR >= 1200 & tics$ISSUE_HOUR < 1300)] <- 12
+tics$ISSUE_HOUR[which(tics$ISSUE_HOUR >= 1300 & tics$ISSUE_HOUR < 1400)] <- 13
+tics$ISSUE_HOUR[which(tics$ISSUE_HOUR >= 1400 & tics$ISSUE_HOUR < 1500)] <- 14
+tics$ISSUE_HOUR[which(tics$ISSUE_HOUR >= 1500 & tics$ISSUE_HOUR < 1600)] <- 15
+tics$ISSUE_HOUR[which(tics$ISSUE_HOUR >= 1600 & tics$ISSUE_HOUR < 1700)] <- 16
+tics$ISSUE_HOUR[which(tics$ISSUE_HOUR >= 1700 & tics$ISSUE_HOUR < 1800)] <- 17
+tics$ISSUE_HOUR[which(tics$ISSUE_HOUR >= 1800 & tics$ISSUE_HOUR < 1900)] <- 18
+tics$ISSUE_HOUR[which(tics$ISSUE_HOUR >= 1900 & tics$ISSUE_HOUR < 2000)] <- 19
+tics$ISSUE_HOUR[which(tics$ISSUE_HOUR >= 2000 & tics$ISSUE_HOUR < 2100)] <- 20
+tics$ISSUE_HOUR[which(tics$ISSUE_HOUR >= 2100 & tics$ISSUE_HOUR < 2200)] <- 21
+tics$ISSUE_HOUR[which(tics$ISSUE_HOUR >= 2200 & tics$ISSUE_HOUR < 2300)] <- 22
+tics$ISSUE_HOUR[which(tics$ISSUE_HOUR >= 2300 & tics$ISSUE_HOUR < 2400)] <- 23
+
+
+hr <- unique((tics$ISSUE_HOUR)) %>% 
+  .[which(. != "")]
+
+df.hr.amt <- data.frame("Hour" = as.character(),
+                        "No_Tickets" = as.numeric(),
+                        "Av_Per_Tkt" = as.numeric()
+)
+for (i in hr){
+  d <- nrow(tics[which(as.character(tics$ISSUE_HOUR) == i),])
+  am <- sum(na.omit(tics$amountdue[which(as.character(tics$ISSUE_HOUR) == i)]))
+  ad <- data.frame("Hour" = i,
+                   "No_Tickets" = d,
+                   "Av_Per_Tkt" = round(am/d, digits = 2)
+  )
+  df.hr.amt <- rbind(df.hr.amt, ad)
+}
+
+#kable(df.hr.amt[order(df.hr.amt$Av_Per_Tkt, decreasing = TRUE),], row.names = FALSE)
+#kable(df.hr.amt[order(df.hr.amt$No_Tickets, decreasing = TRUE),], row.names = FALSE)
+
+hrdat <- df.hr.amt[order(df.hr.amt$Hour, decreasing = FALSE),]
+
+kable(hrdat, row.names = FALSE)
+# hr.g <- ggplot(data = hrdat, aes(x = hrdat$Hour))
+# hr.g + 
+#   geom_line(mapping = aes(y = hrdat$No_Tickets))
+# 
+# hr.g +
+#   geom_line(mapping = aes(y = hrdat$Av_Per_Tkt))
+
+```
+
+### TICKET VOLUME BY DAY OF WEEK
+
+Wednesdays and Fridays are the highest ticketing days with an average of about 1,400 and 1,300 tickets a day respectively. We see that the weekends lead to fewer tickets, however it is important to note that Sunday, which has the fewest average daily tickets of any day of the week, has the highest average price per ticket. If one wants to park illegally in Boston,  Sunday has the lowest chance of a ticket, but if a vehicle does get a parking ticket on Sunday, it will be nearly \$10 more than the rest of the week.
+
+```{r, echo=FALSE}
+
+##### TICKET VOLUME BY DAY OF WEEK #####
+
+
+tics$DOW <- weekdays(as.Date(as.character(tics$ticketissuedate), format = "%m/%d/%Y"))
+
+
+dow <- unique((tics$DOW)) %>% 
+  .[which(is.na(.) == FALSE)]
+
+df.dow.amt <- data.frame("Weekday" = as.character(),
+                        "Av_Tic_Per_Day" = as.numeric(),
+                        "Av_Per_Tkt" = as.numeric()
+)
+for (i in dow){
+  am <- sum(na.omit(tics$amountdue[which(as.character(tics$DOW) == i)]))
+  apd <- round(nrow(tics[which(as.character(tics$DOW) == i),])/length(unique(tics$ticketissuedate[which(as.character(tics$DOW) == i)])), digits = 1)
+  ad <- data.frame("Hour" = i,
+                   "Av_Tic_Per_Day" = apd,
+                   "Av_Per_Tkt" = round(am/d, digits = 2)
+  )
+  df.dow.amt <- rbind(df.dow.amt, ad)
+}
+
+kable(df.dow.amt[order(df.dow.amt$Av_Tic_Per_Day, decreasing = TRUE),], row.names = FALSE)
+```
+
+### TICKET VOLUME BY DAY OF WEEK BY TIME OF DAY
+
+If we drill down even further and look at average tickets written per hour by day of the week, we see some interesting patterns emerge. The following analysis contains some very sensitive information and should be kept as confidential as possible given current public record laws.
+
+This breakdown shows us some of what we already know:  the most average tickets written are between 8AM and 1PM. What we did not know before is the hourly breakdown per day. We now see that the glut of the morning ticket writing is done between 8 and 9AM. Then the average tickets per hour decreases over the next two hours, only to increase again each hour leading up to 1PM. This level of ticket issuance is rarely matched in any other hour or span of hours in the day.
+
+Looking at the weekend sheds light on what can only be surmised as the Parking Department’s little secret. Ticketing on Saturday effectively starts at 8AM and goes steadily, though not all that frequently compared to the weekdays, until midnight. Sunday we see almost no ticket issuance until 11PM. 
+
+
+```{r, echo=FALSE}
+
+##### TICKET VOLUME BY DAY OF WEEK BY TIME OF DAY #####
+
+
+hr <- unique((tics$ISSUE_HOUR)) %>% 
+  .[which(. != "")]
+
+df.dow.avmat <- data.frame("Hour" = as.character(),
+                           "Monday" = as.numeric(),
+                           "Tuesday" = as.numeric(),
+                           "Wednesday" = as.numeric(),
+                           "Thursday" = as.numeric(),
+                           "Friday" = as.numeric(),
+                           "Saturday" = as.numeric(),
+                           "Sunday" = as.numeric()
+)
+
+for (y in hr){
+    mond <- round(nrow(tics[which(as.character(tics$DOW) == "Monday" & as.character(tics$ISSUE_HOUR) == y),])/length(unique(tics$ticketissuedate[which(as.character(tics$DOW) == "Monday")])), digits = 1)
+    tued <- round(nrow(tics[which(as.character(tics$DOW) == "Tuesday" & as.character(tics$ISSUE_HOUR) == y),])/length(unique(tics$ticketissuedate[which(as.character(tics$DOW) == "Tuesday")])), digits = 1)
+    wedd <- round(nrow(tics[which(as.character(tics$DOW) == "Wednesday" & as.character(tics$ISSUE_HOUR) == y),])/length(unique(tics$ticketissuedate[which(as.character(tics$DOW) == "Wednesday")])), digits = 1)
+    thud <- round(nrow(tics[which(as.character(tics$DOW) == "Thursday" & as.character(tics$ISSUE_HOUR) == y),])/length(unique(tics$ticketissuedate[which(as.character(tics$DOW) == "Thursday")])), digits = 1)
+    frid <- round(nrow(tics[which(as.character(tics$DOW) == "Friday" & as.character(tics$ISSUE_HOUR) == y),])/length(unique(tics$ticketissuedate[which(as.character(tics$DOW) == "Friday")])), digits = 1)
+    satd <- round(nrow(tics[which(as.character(tics$DOW) == "Saturday" & as.character(tics$ISSUE_HOUR) == y),])/length(unique(tics$ticketissuedate[which(as.character(tics$DOW) == "Saturday")])), digits = 1)
+    sund <- round(nrow(tics[which(as.character(tics$DOW) == "Sunday" & as.character(tics$ISSUE_HOUR) == y),])/length(unique(tics$ticketissuedate[which(as.character(tics$DOW) == "Sunday")])), digits = 1)
+    
+    ad <- data.frame("Hour" = y,
+                     "Monday" = mond,
+                     "Tuesday" = tued,
+                     "Wednesday" = wedd,
+                     "Thursday" = thud,
+                     "Friday" = frid,
+                     "Saturday" = satd,
+                     "Sunday" = sund)
+    
+    df.dow.avmat <- rbind(df.dow.avmat, ad)
+    
+   # print(paste("Finished with Hour", y, "of", length(hr)))
+    }
+  
+                   
+kable(df.dow.avmat[order(df.dow.avmat$Hour, decreasing = FALSE),], row.names = FALSE)  
+
+
+```
+
+### AVERAGE TICKET AMOUNT BY DAY OF WEEK BY TIME OF DAY
+
+The average ticket price per ticket doesn’t change all that much hour to hour, day by day. We don’t see the amounts ever dip below \$40, owing mainly to the fact that a base parking ticket is \$40. We don’t see a lot of variation during the week, but the weekend seems to be a more expensive, per ticket, than the weekdays. Prices per ticket on Sunday are some of the most expensive per hour than other days of the week at the same hour. Knowing that we see almost no ticket writing pre-10PM on Sunday, this suggests that when tickets are written on Sunday, there are higher than they would be during the day, possibly due to the fact that it is Sunday. 
+
+```{r, echo=FALSE}
+
+##### AVERAGE TICKET AMOUNT BY DAY OF WEEK BY TIME OF DAY #####
+
+
+hr <- unique((tics$ISSUE_HOUR)) %>% 
+  .[which(. != "")]
+
+df.dow.ptamt <- data.frame("Hour" = as.character(),
+                           "Monday" = as.numeric(),
+                           "Tuesday" = as.numeric(),
+                           "Wednesday" = as.numeric(),
+                           "Thursday" = as.numeric(),
+                           "Friday" = as.numeric(),
+                           "Saturday" = as.numeric(),
+                           "Sunday" = as.numeric()
+)
+
+for (y in hr){
+  mond <- round(sum(na.omit(tics$amountdue[which(as.character(tics$DOW) == "Monday" & as.character(tics$ISSUE_HOUR) == y)]))/nrow(tics[which(as.character(tics$DOW) == "Monday" & as.character(tics$ISSUE_HOUR) == y),]), digits = 0)
+  tued <- round(sum(na.omit(tics$amountdue[which(as.character(tics$DOW) == "Tuesday" & as.character(tics$ISSUE_HOUR) == y)]))/nrow(tics[which(as.character(tics$DOW) == "Tuesday" & as.character(tics$ISSUE_HOUR) == y),]), digits = 0)
+  wedd <- round(sum(na.omit(tics$amountdue[which(as.character(tics$DOW) == "Wednesday" & as.character(tics$ISSUE_HOUR) == y)]))/nrow(tics[which(as.character(tics$DOW) == "Wednesday" & as.character(tics$ISSUE_HOUR) == y),]), digits = 0)
+  thud <- round(sum(na.omit(tics$amountdue[which(as.character(tics$DOW) == "Thursday" & as.character(tics$ISSUE_HOUR) == y)]))/nrow(tics[which(as.character(tics$DOW) == "Thursday" & as.character(tics$ISSUE_HOUR) == y),]), digits = 0)
+  frid <- round(sum(na.omit(tics$amountdue[which(as.character(tics$DOW) == "Friday" & as.character(tics$ISSUE_HOUR) == y)]))/nrow(tics[which(as.character(tics$DOW) == "Friday" & as.character(tics$ISSUE_HOUR) == y),]), digits = 0)
+  satd <- round(sum(na.omit(tics$amountdue[which(as.character(tics$DOW) == "Saturday" & as.character(tics$ISSUE_HOUR) == y)]))/nrow(tics[which(as.character(tics$DOW) == "Saturday" & as.character(tics$ISSUE_HOUR) == y),]), digits = 0)
+  sund <- round(sum(na.omit(tics$amountdue[which(as.character(tics$DOW) == "Sunday" & as.character(tics$ISSUE_HOUR) == y)]))/nrow(tics[which(as.character(tics$DOW) == "Sunday" & as.character(tics$ISSUE_HOUR) == y),]), digits = 0)
+  
+  ad <- data.frame("Hour" = y,
+                   "Monday" = mond,
+                   "Tuesday" = tued,
+                   "Wednesday" = wedd,
+                   "Thursday" = thud,
+                   "Friday" = frid,
+                   "Saturday" = satd,
+                   "Sunday" = sund)
+  
+  df.dow.ptamt <- rbind(df.dow.ptamt, ad)
+  
+ # print(paste("Finished with Hour", which(hr == y), "of", length(hr)))
+}
+
+
+kable(df.dow.ptamt[order(df.dow.ptamt$Hour, decreasing = FALSE),], row.names = FALSE)  
+
+```
